@@ -3,6 +3,7 @@ import rclpy
 from rclpy.node import Node
 
 from path_planner.msg import PathPlannerRequest, PathPlannerResponse, PathPlannerFeedback
+from obstacle_manager.msg import ObstacleManagerPublisher
 
 import yaml
 import heapq
@@ -22,6 +23,8 @@ class PathPlannerServer(Node):
 
         self.graph, self.pos = self.load_graph(yaml_path)
 
+        self.obstacles = list()
+
         self.request_sub = self.create_subscription(
             PathPlannerRequest,
             "path_planner/request",
@@ -40,10 +43,24 @@ class PathPlannerServer(Node):
             "path_planner/feedback",
             10
         )
+        
+        self.obstacle_sub = self.create_subscription(
+            ObstacleManagerPublisher,
+            "obstacle_manager/publish_obstacle",
+            self.handle_obstacle_request,
+            10 
+        )
 
         self.pool = ThreadPoolExecutor(max_workers=max(2, (os.cpu_count() or 2)))
 
         self.get_logger().info("PathPlannerServer ready.")
+    
+    def handle_obstacle_request(self, msg):
+        self.get_logger().info(f"Received obstacle data: x={msg.x}, y={msg.y}, type={msg.type}, id={msg.id}")
+        obstacle = (msg.x, msg.y, msg.type, msg.id)
+        if(obstacle not in self.obstacles):
+            self.obstacles.append(obstacle)
+            self.get_logger().info(f"Added obstacle id: {msg.id}")
 
     def load_graph(self, path):
         with open(path, 'r') as f:
