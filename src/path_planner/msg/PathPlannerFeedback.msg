@@ -1,4 +1,4 @@
 int32 robot_id
-int32 current_x
-int32 current_y
+float32 current_x
+float32 current_y
 float32 percent_complete

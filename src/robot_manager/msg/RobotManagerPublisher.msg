@@ -1,0 +1,12 @@
+int32 robot_id
+string robot_type
+float32 move_speed
+float32 perception_radius
+float32 obstacle_distance_threshold
+float32 start_x
+float32 start_y
+float32 end_x
+float32 end_y
+float32[] path_x
+float32[] path_y
+bool loop

@@ -1,0 +1,26 @@
+robots:
+  - robot_type: "cleaner"
+    move_speed: 2.0
+    perception_radius: 1.0
+    obstacle_distance_threshold: 1.0
+    start_x: 1.0
+    start_y: 1.0
+    end_x: 4.0
+    end_y: 1.0
+    path:
+      - [1.0, 1.0]
+      - [4.0, 1.0]
+      - [4.0, 3.0]
+      - [1.0, 3.0]
+    loop: true
+  
+  - robot_type: "default"
+    move_speed: 2.0
+    perception_radius: 1.0
+    obstacle_distance_threshold: 1.0
+    start_x: 1.0
+    start_y: 5.0
+    end_x: 1.0
+    end_y: 1.0
+    path: []
+    loop: false

@@ -2,7 +2,7 @@
 import rclpy
 from rclpy.node import Node
 
-from path_planner.msg import PathPlannerRequest, PathPlannerResponse, PathPlannerFeedback
+from path_planner.msg import PathPlannerRequest, PathPlannerResponse
 from obstacle_manager.msg import ObstacleManagerPublisher
 
 import yaml
@@ -35,12 +35,6 @@ class PathPlannerServer(Node):
         self.response_pub = self.create_publisher(
             PathPlannerResponse,
             "path_planner/response",
-            10
-        )
-
-        self.feedback_pub = self.create_publisher(
-            PathPlannerFeedback,
-            "path_planner/feedback",
             10
         )
         
@@ -125,7 +119,6 @@ class PathPlannerServer(Node):
             path.append(cur)
         return list(reversed(path))
 
-    # Handle incoming request
     def handle_request(self, req):
         robot_id = req.robot_id
 
@@ -138,19 +131,11 @@ class PathPlannerServer(Node):
             f"Unity({req.end_x},{req.end_y})  | Graph nodes: {start} → {goal}"
         )
 
-        # dummy feedback
-        fb = PathPlannerFeedback()
-        fb.robot_id = robot_id
-        fb.current_x = req.start_x
-        fb.current_y = req.start_y
-        fb.percent_complete = 0.0
-        self.feedback_pub.publish(fb)
-
         self.pool.submit(
             self._plan_and_publish,
             robot_id, start, goal,
-            float(req.start_x), float(req.start_y),
-            float(req.end_x), float(req.end_y),
+            req.start_x, req.start_y,
+            req.end_x, req.end_y,
         )
     
     def _plan_and_publish(self, robot_id, start_node, goal_node, start_x, start_y, end_x, end_y):
@@ -168,19 +153,11 @@ class PathPlannerServer(Node):
             res.success = True
             for nid in node_path:
                 (x, y) = self.pos[nid]
-                res.path_x.append(int(x))
-                res.path_y.append(int(y))
+                res.path_x.append(x)
+                res.path_y.append(y)
 
         # publish response
         self.response_pub.publish(res)
-
-        # Final feedback
-        fb = PathPlannerFeedback()
-        fb.robot_id = robot_id
-        fb.percent_complete = 100.0
-        fb.current_x = end_x
-        fb.current_y = end_y
-        self.feedback_pub.publish(fb)
     
     def destroy_node(self):
         self.pool.shutdown(wait=True)
