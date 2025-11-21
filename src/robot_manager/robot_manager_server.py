@@ -5,14 +5,14 @@ from rclpy.node import Node
 import os
 import yaml
 
-from robot_manager.msg import RobotManagerPublisher, RobotManagerSubscriber
+from robot_manager.msg import RobotManagerRobotPublisher, RobotManagerRobotSubscriber, RobotManagerTrackerSubscriber
 
 from ament_index_python.packages import get_package_share_directory
 
 class RobotManager(Node):
 
     robotID = 1
-    robots = []
+    robots = {}
 
     def __init__(self):
         super().__init__('robot_manager')
@@ -21,29 +21,41 @@ class RobotManager(Node):
         yaml_path = os.path.join(pkg_share, 'config', 'robotConfig.yaml')
         self.get_logger().info(f"Loading YAML file: {yaml_path}")
 
-        self.subscriber = self.create_subscription(
-            RobotManagerSubscriber,
+        self.robotSubscriber = self.create_subscription(
+            RobotManagerRobotSubscriber,
             "robot_manager/subscribe_robot",
-            self.handle_req,
+            self.handle_robot_req,
             10
         )
 
-        self.publisher = self.create_publisher(
-            RobotManagerPublisher,
+        self.robotPublisher = self.create_publisher(
+            RobotManagerRobotPublisher,
             "robot_manager/publish_robot",
             10
         )
 
+        self.trackerSubscriber = self.create_subscription(
+            RobotManagerTrackerSubscriber,
+            "robot_manager/subscribe_tracker",
+            self.handle_tracker_req,
+            10
+        )
+
         self.get_logger().info("RobotManager node has been started.")
-
         self.load_robot_config(yaml_path)
-
         # self.publish_robots()
 
-    def handle_req(self, msg):
+    def handle_robot_req(self, msg):
         self.get_logger().info(f"Robot manager received message: {msg.state}")
         if msg.state == "ready":
             self.publish_robots()
+
+    def handle_tracker_req(self, msg):
+        self.get_logger().info(f"Robot manager received tracker from: {msg.robot_id}")
+        self.robots[msg.robot_id] = (msg.robot_id, msg.robot_type, msg.move_speed, msg.perception_radius, msg.obstacle_distance_threshold, 
+                                     msg.current_x, msg.current_y, msg.start_x, msg.start_y, msg.end_x, msg.end_y, msg.destinations_x, msg.destinations_y, msg.loop, 
+                                     msg.obstacle_detected, msg.performing_task)
+        self.get_logger().info(f"Updated robot {msg.robot_id}")
     
     def load_robot_config(self, path):
         with open(path, 'r') as f:
@@ -63,15 +75,21 @@ class RobotManager(Node):
             path_x = [point[0] for point in path]
             path_y = [point[1] for point in path]
             loop = robot["loop"]
-            self.robots.append((id, robot_type, move_speed, perception_radius, obstacle_distance_threshold, start_x, start_y, end_x, end_y, path_x, path_y, loop))
+            current_x = start_x
+            current_y = start_y
+            # self.robots.append((id, robot_type, move_speed, perception_radius, obstacle_distance_threshold, start_x, start_y, end_x, end_y, path_x, path_y, loop))
+            self.robots[id] = (id, robot_type, move_speed, perception_radius, obstacle_distance_threshold, current_x, current_y, start_x, start_y, end_x, end_y, 
+                               path_x, path_y, loop, False, False)
             self.robotID += 1
 
     def publish_robots(self):
-        msg = RobotManagerPublisher()
+        msg = RobotManagerRobotPublisher()
 
-        for robot in self.robots:
-            id, robot_type, move_speed, perception_radius, obstacle_distance_threshold, start_x, start_y, end_x, end_y, path_x, path_y, loop = robot
-            msg.robot_id = id
+        for robot in self.robots.values():
+            (robot_id, robot_type, move_speed, perception_radius, obstacle_distance_threshold,
+             current_x, current_y, start_x, start_y, end_x, end_y, path_x, path_y, loop,
+             obstacle_detected, performing_task) = robot
+            msg.robot_id = robot_id
             msg.robot_type = robot_type
             msg.move_speed = move_speed
             msg.perception_radius = perception_radius
@@ -83,10 +101,10 @@ class RobotManager(Node):
             msg.path_x = path_x
             msg.path_y = path_y
             msg.loop = loop
-            self.publisher.publish(msg)
+            self.robotPublisher.publish(msg)
             self.get_logger().info(f"Published robot with id: {id}")
         
-        self.get_logger().info("Published RobotManagerPublisher message.")
+        self.get_logger().info("Published RobotManagerRobotPublisher message.")
 
 def main(args=None):
     rclpy.init(args=args)

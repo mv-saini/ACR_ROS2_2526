@@ -25,8 +25,9 @@ endif()
 
 find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/RobotManagerPublisher.msg"
-  "msg/RobotManagerSubscriber.msg"
+  "msg/RobotManagerRobotPublisher.msg"
+  "msg/RobotManagerRobotSubscriber.msg"
+  "msg/RobotManagerTrackerSubscriber.msg"
 )
 
 install(
