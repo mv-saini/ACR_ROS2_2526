@@ -49,6 +49,7 @@ class RobotManager(Node):
     def handle_robot_req(self, msg):
         self.get_logger().info(f"Robot manager received message: {msg.state}")
         if msg.state == "ready":
+            self.tracked_robots = {}
             self.publish_robots()
 
     def handle_tracker_req(self, msg):
