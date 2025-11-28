@@ -34,4 +34,11 @@ def generate_launch_description():
             name='obstacle_manager',
             output='screen'
         ),
+
+        Node(
+            package='airport_grid',
+            executable='publish_airport_grid.py',
+            name='airport_grid_publisher',
+            output='screen'
+        ),
     ])

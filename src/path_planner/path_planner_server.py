@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
+import json
 import rclpy
 from rclpy.node import Node
 
 from path_planner.msg import PathPlannerRequest, PathPlannerResponse
 from obstacle_manager.msg import ObstacleManagerPublisher
 
-import yaml
 import heapq
 from math import sqrt
 import os
@@ -17,11 +17,11 @@ class PathPlannerServer(Node):
     def __init__(self):
         super().__init__('path_planner_server')
 
-        pkg_share = get_package_share_directory('path_planner')
-        yaml_path = os.path.join(pkg_share, 'config', 'map.yaml')
-        self.get_logger().info(f"Loading YAML map: {yaml_path}")
+        pkg_share = get_package_share_directory('airport_grid')
+        json_path = os.path.join(pkg_share, 'config', 'airport.json')
+        self.get_logger().info(f"Loading JSON map: {json_path}")
 
-        self.graph, self.pos = self.load_graph(yaml_path)
+        self.graph, self.pos = self.load_graph(json_path)
 
         self.obstacles = list()
 
@@ -58,19 +58,24 @@ class PathPlannerServer(Node):
 
     def load_graph(self, path):
         with open(path, 'r') as f:
-            data = yaml.safe_load(f)
+            data = json.load(f)
 
         graph = {}
         pos = {}
 
-        # load nodes
         for n in data["nodes"]:
             nid = int(n["id"])
-            pos[nid] = (float(n["x"]), float(n["y"]))
-
-        # load adjacency
-        for nid, neighbors in data["adjacency"].items():
-            graph[int(nid)] = [int(x) for x in neighbors]
+            if n["type"] in [1, 2, 3]:
+                pos[nid] = (float(n["x"]), float(n["y"]))
+                neighbors = [int(x) for x in n.get("neighbors", [])]
+                valid_neighbors = []
+                for neighbor in neighbors:
+                    neighbor_node = next((node for node in data["nodes"] if int(node["id"]) == neighbor), None)
+                    if neighbor_node and neighbor_node["type"] in [1, 2, 3]:
+                        valid_neighbors.append(neighbor)
+                graph[nid] = valid_neighbors
+        
+        self.get_logger().info(f"Loaded graph with {len(graph)} nodes.")
 
         return graph, pos
 
@@ -89,6 +94,7 @@ class PathPlannerServer(Node):
                 best_d = d
                 best = nid
 
+        self.get_logger().info(f"Closest node to ({x},{y}) is {best} at {self.pos.get(best)}")
         return best
 
     def a_star(self, start, goal):
