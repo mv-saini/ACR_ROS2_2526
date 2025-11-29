@@ -5,6 +5,7 @@ from rclpy.node import Node
 
 from path_planner.msg import PathPlannerRequest, PathPlannerResponse
 from obstacle_manager.msg import ObstacleManagerObstacleReport
+from robot_manager.msg import RobotManagerRobotPublisher
 
 import heapq
 from math import sqrt
@@ -25,6 +26,7 @@ class PathPlannerServer(Node):
         self.graph, self.pos = self.load_graph(json_path)
 
         self.obstacles = dict()
+        self.robots = dict()
 
         self.request_sub = self.create_subscription(
             PathPlannerRequest,
@@ -53,6 +55,13 @@ class PathPlannerServer(Node):
             10
         )
 
+        self.robot_sub = self.create_subscription(
+            RobotManagerRobotPublisher,
+            "robot_manager/publish_robot",
+            self.handle_robot_request,
+            10
+        )
+
         self.pool = ThreadPoolExecutor(max_workers=max(2, (os.cpu_count() or 2)))
 
         self.get_logger().info("PathPlannerServer ready.")
@@ -60,6 +69,10 @@ class PathPlannerServer(Node):
     def handle_reset_state(self, msg):
         self.get_logger().info("Resetting path planner state.")
         self.obstacles = dict()
+        self.robots = dict()
+
+    def handle_robot_request(self, msg):
+        self.robots[msg.robot_id] = msg.robot_type
     
     def handle_obstacle_request(self, msg):
         self.get_logger().info(f"Received obstacle with id: {msg.id} from Obstacle Manager.")
@@ -116,7 +129,7 @@ class PathPlannerServer(Node):
 
         return best
 
-    def a_star(self, start, goal):        
+    def a_star(self, start, goal, robot_id):        
         blocked_nodes = set()
         active_obstacles = []
         
@@ -124,6 +137,9 @@ class PathPlannerServer(Node):
         for obs in self.obstacles.values():
             obs_x, obs_y, obs_type, obs_status, obs_scale_x, obs_scale_y, obs_id = obs
             if(obs_status == "unhandled"):
+                if((obs_type == "DirtObstacle" and self.robots.get(robot_id, "") == "cleaner") or
+                   (obs_type == "UnattendedObstacle" and self.robots.get(robot_id, "") == "security")):
+                    continue
                 active_obstacles.append(obs)
                 for nid, (nx, ny) in self.pos.items():
                     if abs(nx - obs_x) <= obs_scale_x and abs(ny - obs_y) <= obs_scale_y:
@@ -230,7 +246,7 @@ class PathPlannerServer(Node):
         )
     
     def _plan_and_publish(self, robot_id, start_node, goal_node, start_x, start_y, end_x, end_y):
-        node_path = self.a_star(start_node, goal_node)
+        node_path = self.a_star(start_node, goal_node, robot_id)
 
         res = PathPlannerResponse()
         res.robot_id = robot_id
