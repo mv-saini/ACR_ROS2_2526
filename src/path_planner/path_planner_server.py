@@ -63,7 +63,7 @@ class PathPlannerServer(Node):
     
     def handle_obstacle_request(self, msg):
         self.get_logger().info(f"Received obstacle with id: {msg.id} from Obstacle Manager.")
-        obstacle = (msg.x, msg.y, msg.type, msg.status, msg.id)
+        obstacle = (msg.x, msg.y, msg.type, msg.status, msg.scale_x, msg.scale_y, msg.id)
         if(obstacle[3] == "handled"):
             if msg.id in self.obstacles:
                 del self.obstacles[msg.id]
@@ -117,16 +117,26 @@ class PathPlannerServer(Node):
         return best
 
     def a_star(self, start, goal):
+        # Determine blocked nodes
         blocked_nodes = set()
-        '''for obs in self.obstacles:
-            obs_x, obs_y, obs_type, obs_id = obs
-            blocked = self.closest_node(obs_x, obs_y)
-            blocked_nodes.add(blocked)'''
         for obs in self.obstacles.values():
-            obs_x, obs_y, obs_type, obs_status, obs_id = obs
+            obs_x, obs_y, obs_type, obs_status, obs_scale_x, obs_scale_y, obs_id = obs
             if(obs_status == "unhandled"):
-                blocked = self.closest_node(obs_x, obs_y)
-                blocked_nodes.add(blocked)
+                for nid, (nx, ny) in self.pos.items():
+                    if abs(nx - obs_x) <= obs_scale_x and abs(ny - obs_y) <= obs_scale_y:
+                        blocked_nodes.add(nid)
+
+        # Adjust goal if blocked
+        actual_goal = goal
+        if goal in blocked_nodes:
+            neighbors = self.graph.get(goal, [])
+            min_dist = float("inf")
+            for neighbor in neighbors:
+                if neighbor not in blocked_nodes:
+                    dist = self.euclidean_distance(start, neighbor)
+                    if dist < min_dist:
+                        min_dist = dist
+                        actual_goal = neighbor
 
         open_set = [(0, start)]
         came_from = {}
@@ -135,7 +145,7 @@ class PathPlannerServer(Node):
         while open_set:
             _, cur = heapq.heappop(open_set)
 
-            if cur == goal:
+            if cur == actual_goal:
                 return self.reconstruct_path(came_from, cur)
 
             for neighbor in self.graph[cur]:
@@ -147,12 +157,12 @@ class PathPlannerServer(Node):
                 if node_type == 1:
                     extra_cost = 1
                 elif node_type == 3:
-                    extra_cost = 10
+                    extra_cost = 2
 
                 cost = g[cur] + self.euclidean_distance(cur, neighbor) + extra_cost
                 if neighbor not in g or cost < g[neighbor]:
                     g[neighbor] = cost
-                    f = cost + self.euclidean_distance(neighbor, goal)
+                    f = cost + self.euclidean_distance(neighbor, actual_goal)
                     heapq.heappush(open_set, (f, neighbor))
                     came_from[neighbor] = cur
 

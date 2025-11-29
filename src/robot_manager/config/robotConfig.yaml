@@ -1,6 +1,6 @@
 robots:
   - robot_type: "security"
-    move_speed: 1.0
+    move_speed: 5.0
     perception_radius: 1.5
     obstacle_distance_threshold: 1.0
     start_x: 10.0
