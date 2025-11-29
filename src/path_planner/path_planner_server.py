@@ -4,7 +4,7 @@ import rclpy
 from rclpy.node import Node
 
 from path_planner.msg import PathPlannerRequest, PathPlannerResponse
-from obstacle_manager.msg import ObstacleManagerPublisher
+from obstacle_manager.msg import ObstacleManagerObstacleReport
 
 import heapq
 from math import sqrt
@@ -12,6 +12,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from concurrent.futures import ThreadPoolExecutor
 
+from std_msgs.msg import String
 
 class PathPlannerServer(Node):
     def __init__(self):
@@ -23,7 +24,7 @@ class PathPlannerServer(Node):
 
         self.graph, self.pos = self.load_graph(json_path)
 
-        self.obstacles = list()
+        self.obstacles = dict()
 
         self.request_sub = self.create_subscription(
             PathPlannerRequest,
@@ -39,22 +40,38 @@ class PathPlannerServer(Node):
         )
         
         self.obstacle_sub = self.create_subscription(
-            ObstacleManagerPublisher,
+            ObstacleManagerObstacleReport,
             "obstacle_manager/publish_obstacle",
             self.handle_obstacle_request,
             10 
         )
 
+        self.reset_state = self.create_subscription(
+            String,
+            "path_planner/reset_state",
+            self.handle_reset_state,
+            10
+        )
+
         self.pool = ThreadPoolExecutor(max_workers=max(2, (os.cpu_count() or 2)))
 
         self.get_logger().info("PathPlannerServer ready.")
+
+    def handle_reset_state(self, msg):
+        self.get_logger().info("Resetting path planner state.")
+        self.obstacles = dict()
     
     def handle_obstacle_request(self, msg):
-        self.get_logger().info(f"Received obstacle data: x={msg.x}, y={msg.y}, type={msg.type}, id={msg.id}")
-        obstacle = (msg.x, msg.y, msg.type, msg.id)
-        if(obstacle not in self.obstacles):
-            self.obstacles.append(obstacle)
-            self.get_logger().info(f"Added obstacle id: {msg.id}")
+        self.get_logger().info(f"Received obstacle with id: {msg.id} from Obstacle Manager.")
+        obstacle = (msg.x, msg.y, msg.type, msg.status, msg.id)
+        if(obstacle[3] == "handled"):
+            if msg.id in self.obstacles:
+                del self.obstacles[msg.id]
+                self.get_logger().info(f"Removed obstacle with id: {msg.id}")
+        elif obstacle[3] == "unhandled":
+            if(msg.id not in self.obstacles):
+                self.obstacles[msg.id] = obstacle
+                self.get_logger().info(f"Added new obstacle with id: {msg.id}")
 
     def load_graph(self, path):
         with open(path, 'r') as f:
@@ -62,11 +79,13 @@ class PathPlannerServer(Node):
 
         graph = {}
         pos = {}
+        node_types = {}
 
         for n in data["nodes"]:
             nid = int(n["id"])
             if n["type"] in [1, 2, 3]:
                 pos[nid] = (float(n["x"]), float(n["y"]))
+                node_types[nid] = n["type"]
                 neighbors = [int(x) for x in n.get("neighbors", [])]
                 valid_neighbors = []
                 for neighbor in neighbors:
@@ -74,7 +93,8 @@ class PathPlannerServer(Node):
                     if neighbor_node and neighbor_node["type"] in [1, 2, 3]:
                         valid_neighbors.append(neighbor)
                 graph[nid] = valid_neighbors
-        
+
+        self.node_types = node_types
         self.get_logger().info(f"Loaded graph with {len(graph)} nodes.")
 
         return graph, pos
@@ -94,10 +114,20 @@ class PathPlannerServer(Node):
                 best_d = d
                 best = nid
 
-        self.get_logger().info(f"Closest node to ({x},{y}) is {best} at {self.pos.get(best)}")
         return best
 
     def a_star(self, start, goal):
+        blocked_nodes = set()
+        '''for obs in self.obstacles:
+            obs_x, obs_y, obs_type, obs_id = obs
+            blocked = self.closest_node(obs_x, obs_y)
+            blocked_nodes.add(blocked)'''
+        for obs in self.obstacles.values():
+            obs_x, obs_y, obs_type, obs_status, obs_id = obs
+            if(obs_status == "unhandled"):
+                blocked = self.closest_node(obs_x, obs_y)
+                blocked_nodes.add(blocked)
+
         open_set = [(0, start)]
         came_from = {}
         g = {start: 0}
@@ -109,7 +139,17 @@ class PathPlannerServer(Node):
                 return self.reconstruct_path(came_from, cur)
 
             for neighbor in self.graph[cur]:
-                cost = g[cur] + self.euclidean_distance(cur, neighbor)
+                if neighbor in blocked_nodes:
+                    continue
+
+                node_type = self.get_node_type(neighbor)
+                extra_cost = 0
+                if node_type == 1:
+                    extra_cost = 1
+                elif node_type == 3:
+                    extra_cost = 10
+
+                cost = g[cur] + self.euclidean_distance(cur, neighbor) + extra_cost
                 if neighbor not in g or cost < g[neighbor]:
                     g[neighbor] = cost
                     f = cost + self.euclidean_distance(neighbor, goal)
@@ -118,6 +158,9 @@ class PathPlannerServer(Node):
 
         return None
 
+    def get_node_type(self, node_id):
+        return self.node_types.get(node_id, 2)
+    
     def reconstruct_path(self, came_from, cur):
         path = [cur]
         while cur in came_from:
@@ -128,13 +171,12 @@ class PathPlannerServer(Node):
     def handle_request(self, req):
         robot_id = req.robot_id
 
-        # convert unity coords → closest graph nodes
         start = self.closest_node(req.start_x, req.start_y)
         goal = self.closest_node(req.end_x, req.end_y)
 
         self.get_logger().info(
             f"[Robot {robot_id}] request: Unity({req.start_x},{req.start_y}) → "
-            f"Unity({req.end_x},{req.end_y})  | Graph nodes: {start} → {goal}"
+            f"Unity({req.end_x},{req.end_y}) | Graph nodes: {start} → {goal}"
         )
 
         self.pool.submit(
@@ -162,13 +204,11 @@ class PathPlannerServer(Node):
                 res.path_x.append(x)
                 res.path_y.append(y)
 
-        # publish response
         self.response_pub.publish(res)
     
     def destroy_node(self):
         self.pool.shutdown(wait=True)
         super().destroy_node()
-
 
 def main(args=None):
     rclpy.init(args=args)
@@ -176,7 +216,6 @@ def main(args=None):
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
-
 
 if __name__ == "__main__":
     main()

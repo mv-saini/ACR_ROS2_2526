@@ -24,7 +24,7 @@ class RobotManager(Node):
 
         self.robotSubscriber = self.create_subscription(
             RobotManagerRobotSubscriber,
-            "robot_manager/subscribe_robot",
+            "robot_manager/request_robot",
             self.handle_robot_req,
             10
         )

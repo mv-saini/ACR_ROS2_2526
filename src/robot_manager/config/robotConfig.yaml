@@ -1,21 +1,6 @@
 robots:
-  - robot_type: "cleaner"
-    move_speed: 1.0
-    perception_radius: 1.5
-    obstacle_distance_threshold: 1.0
-    start_x: 2.0
-    start_y: 2.0
-    end_x: 17.0
-    end_y: 2.0
-    path: 
-      - [2.0, 2.0]
-      - [17.0, 2.0]
-      - [17.0, 17.0]
-      - [2.0, 17.0]
-    loop: true
-
   - robot_type: "security"
-    move_speed: 2.0
+    move_speed: 1.0
     perception_radius: 1.5
     obstacle_distance_threshold: 1.0
     start_x: 10.0

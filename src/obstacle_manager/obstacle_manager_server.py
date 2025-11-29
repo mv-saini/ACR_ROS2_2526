@@ -2,7 +2,7 @@
 import rclpy
 from rclpy.node import Node
 
-from obstacle_manager.msg import ObstacleManagerSubscriber, ObstacleManagerPublisher
+from obstacle_manager.msg import ObstacleManagerObstacleReport
 
 import time
 
@@ -11,14 +11,14 @@ class ObstacleManager(Node):
         super().__init__('obstacle_manager')
 
         self.subscriber = self.create_subscription(
-            ObstacleManagerSubscriber,
+            ObstacleManagerObstacleReport,
             "obstacle_manager/report_obstacle",
             self.handle_obstacle_unity_request,
             10
         )
 
         self.publisher = self.create_publisher(
-            ObstacleManagerPublisher,
+            ObstacleManagerObstacleReport,
             "obstacle_manager/publish_obstacle",
             10
         )
@@ -26,16 +26,9 @@ class ObstacleManager(Node):
         self.get_logger().info("ObstacleManager node has been started.")
     
     def handle_obstacle_unity_request(self, msg):
-        self.get_logger().info(f"Received obstacle data: x={msg.x}, y={msg.y}, type={msg.type}")
-
-        response_msg = ObstacleManagerPublisher()
-        response_msg.x = msg.x
-        response_msg.y = msg.y
-        response_msg.type = msg.type
-        response_msg.id = f"obstacle_{time.time()}"
-
-        self.publisher.publish(response_msg)
-        self.get_logger().info(f"Published obstacle data with id: {response_msg.id}")
+        self.get_logger().info(f"Received obstacle with id: {msg.id} from Unity.")
+        self.publisher.publish(msg)
+        self.get_logger().info(f"Published obstacle data with id: {msg.id}")
 
 def main(args=None):
     rclpy.init(args=args)
