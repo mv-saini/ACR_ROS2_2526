@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-import rclpy
-from rclpy.node import Node
+import rclpy # type: ignore
+from rclpy.node import Node # type: ignore
 import json
 import os
 
-from ament_index_python.packages import get_package_share_directory
+from ament_index_python.packages import get_package_share_directory # type: ignore
 
-from std_msgs.msg import String
+from std_msgs.msg import String # type: ignore
 
 class AirportGridPublisher(Node):
 

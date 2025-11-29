@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-import rclpy
-from rclpy.node import Node
+import rclpy # type: ignore
+from rclpy.node import Node # type: ignore
 
 import os
-import yaml
+import yaml # type: ignore
 
 from robot_manager.msg import RobotManagerRobotPublisher, RobotManagerRobotSubscriber, RobotManagerTrackerSubscriber
 
-from ament_index_python.packages import get_package_share_directory
+from ament_index_python.packages import get_package_share_directory # type: ignore
 
 class RobotManager(Node):
 

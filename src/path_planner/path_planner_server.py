@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
-import rclpy
-from rclpy.node import Node
+import rclpy # type: ignore
+from rclpy.node import Node # type: ignore
 
 from path_planner.msg import PathPlannerRequest, PathPlannerResponse
 from obstacle_manager.msg import ObstacleManagerObstacleReport
@@ -10,10 +10,10 @@ from robot_manager.msg import RobotManagerRobotPublisher
 import heapq
 from math import sqrt
 import os
-from ament_index_python.packages import get_package_share_directory
+from ament_index_python.packages import get_package_share_directory # type: ignore
 from concurrent.futures import ThreadPoolExecutor
 
-from std_msgs.msg import String
+from std_msgs.msg import String # type: ignore
 
 class PathPlannerServer(Node):
     def __init__(self):
@@ -129,23 +129,30 @@ class PathPlannerServer(Node):
 
         return best
 
-    def a_star(self, start, goal, robot_id):        
+    def skip_obstacle_for_robot(self, obs_type, robot_id):
+        robot_type = self.robots.get(robot_id, "")
+        if((obs_type == "DirtObstacle" and robot_type == "cleaner") or
+           (obs_type == "UnattendedObstacle" and robot_type == "security")):
+            return True
+        return False
+    
+    def determine_blocked_nodes(self, robot_id):
         blocked_nodes = set()
         active_obstacles = []
         
-        # Determine blocked nodes
         for obs in self.obstacles.values():
             obs_x, obs_y, obs_type, obs_status, obs_scale_x, obs_scale_y, obs_id = obs
             if(obs_status == "unhandled"):
-                if((obs_type == "DirtObstacle" and self.robots.get(robot_id, "") == "cleaner") or
-                   (obs_type == "UnattendedObstacle" and self.robots.get(robot_id, "") == "security")):
+                if(self.skip_obstacle_for_robot(obs_type, robot_id)):
                     continue
                 active_obstacles.append(obs)
                 for nid, (nx, ny) in self.pos.items():
                     if abs(nx - obs_x) <= obs_scale_x and abs(ny - obs_y) <= obs_scale_y:
                         blocked_nodes.add(nid)
-
-        # Adjust goal if blocked
+        
+        return blocked_nodes, active_obstacles
+    
+    def adjust_goal_if_blocked(self, goal, blocked_nodes, start):
         actual_goal = goal
         if goal in blocked_nodes:
             neighbors = self.graph.get(goal, [])
@@ -156,6 +163,11 @@ class PathPlannerServer(Node):
                     if dist < min_dist:
                         min_dist = dist
                         actual_goal = neighbor
+        return actual_goal
+
+    def a_star(self, start, goal, robot_id):        
+        blocked_nodes, active_obstacles = self.determine_blocked_nodes(robot_id)
+        actual_goal = self.adjust_goal_if_blocked(goal, blocked_nodes, start)
 
         open_set = [(0, start)]
         came_from = {}

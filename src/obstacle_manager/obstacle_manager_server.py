@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-import rclpy
-from rclpy.node import Node
+import rclpy # type: ignore
+from rclpy.node import Node # type: ignore
 
 from obstacle_manager.msg import ObstacleManagerObstacleReport
-
-import time
 
 class ObstacleManager(Node):
     def __init__(self):
