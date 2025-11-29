@@ -116,12 +116,15 @@ class PathPlannerServer(Node):
 
         return best
 
-    def a_star(self, start, goal):
-        # Determine blocked nodes
+    def a_star(self, start, goal):        
         blocked_nodes = set()
+        active_obstacles = []
+        
+        # Determine blocked nodes
         for obs in self.obstacles.values():
             obs_x, obs_y, obs_type, obs_status, obs_scale_x, obs_scale_y, obs_id = obs
             if(obs_status == "unhandled"):
+                active_obstacles.append(obs)
                 for nid, (nx, ny) in self.pos.items():
                     if abs(nx - obs_x) <= obs_scale_x and abs(ny - obs_y) <= obs_scale_y:
                         blocked_nodes.add(nid)
@@ -148,18 +151,48 @@ class PathPlannerServer(Node):
             if cur == actual_goal:
                 return self.reconstruct_path(came_from, cur)
 
+            cur_pos = self.pos[cur]
+
             for neighbor in self.graph[cur]:
                 if neighbor in blocked_nodes:
                     continue
 
+                neighbor_pos = self.pos[neighbor]
+
+                # Base cost
                 node_type = self.get_node_type(neighbor)
                 extra_cost = 0
                 if node_type == 1:
-                    extra_cost = 1
+                    extra_cost = 1.0
                 elif node_type == 3:
-                    extra_cost = 2
+                    extra_cost = 2.0
+                
+                # Side cost
+                side_penalty = 0.0
+                
+                for obs in active_obstacles:
+                    obs_x, obs_y, _, _, obs_sx, obs_sy, _ = obs
+                    
+                    dist_to_obs = sqrt((cur_pos[0] - obs_x)**2 + (cur_pos[1] - obs_y)**2)
+                    
+                    influence_radius = max(obs_sx, obs_sy) * 4.0 
+                    
+                    if dist_to_obs < influence_radius:
+                        vec_rob_obs_x = obs_x - cur_pos[0]
+                        vec_rob_obs_y = obs_y - cur_pos[1]
+                        
+                        vec_move_x = neighbor_pos[0] - cur_pos[0]
+                        vec_move_y = neighbor_pos[1] - cur_pos[1]
+                        
+                        cross_prod = (vec_move_x * vec_rob_obs_y) - (vec_move_y * vec_rob_obs_x)
 
-                cost = g[cur] + self.euclidean_distance(cur, neighbor) + extra_cost
+                        if cross_prod < -0.01:
+                            side_penalty += 20.0 
+                        elif cross_prod > 0.01:
+                            side_penalty += 0.0
+
+                cost = g[cur] + self.euclidean_distance(cur, neighbor) + extra_cost + side_penalty
+                
                 if neighbor not in g or cost < g[neighbor]:
                     g[neighbor] = cost
                     f = cost + self.euclidean_distance(neighbor, actual_goal)
