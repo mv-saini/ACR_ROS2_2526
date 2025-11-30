@@ -75,14 +75,14 @@ class PathPlannerServer(Node):
         self.robots[msg.robot_id] = msg.robot_type
     
     def handle_obstacle_request(self, msg):
-        self.get_logger().info(f"Received obstacle with id: {msg.id} from Obstacle Manager.")
+        self.get_logger().info(f"Received obstacle {msg.status} with id: {msg.id} from Obstacle Manager.")
         obstacle = (msg.x, msg.y, msg.type, msg.status, msg.scale_x, msg.scale_y, msg.id)
-        if(obstacle[3] == "handled"):
+        if msg.status == "handled":
             if msg.id in self.obstacles:
                 del self.obstacles[msg.id]
                 self.get_logger().info(f"Removed obstacle with id: {msg.id}")
-        elif obstacle[3] == "unhandled":
-            if(msg.id not in self.obstacles):
+        elif msg.status == "unhandled":
+            if msg.id not in self.obstacles:
                 self.obstacles[msg.id] = obstacle
                 self.get_logger().info(f"Added new obstacle with id: {msg.id}")
 
@@ -193,7 +193,7 @@ class PathPlannerServer(Node):
                 if node_type == 1:
                     extra_cost = 1.0
                 elif node_type == 3:
-                    extra_cost = 2.0
+                    extra_cost = 10.0
                 
                 # Side cost
                 side_penalty = 0.0
@@ -203,7 +203,7 @@ class PathPlannerServer(Node):
                     
                     dist_to_obs = sqrt((cur_pos[0] - obs_x)**2 + (cur_pos[1] - obs_y)**2)
                     
-                    influence_radius = max(obs_sx, obs_sy) * 4.0 
+                    influence_radius = max(obs_sx, obs_sy) * 2.0 
                     
                     if dist_to_obs < influence_radius:
                         vec_rob_obs_x = obs_x - cur_pos[0]

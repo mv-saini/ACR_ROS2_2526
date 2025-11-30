@@ -101,9 +101,9 @@ class RobotManager(Node):
             msg.path_y = path_y
             msg.loop = loop
             self.robotPublisher.publish(msg)
-            self.get_logger().info(f"Published robot with id: {id}")
+            self.get_logger().info(f"Published robot with id: {robot_id}")
         
-        self.get_logger().info("Published RobotManagerRobotPublisher message.")
+        self.get_logger().info("Published all robots.")
 
 def main(args=None):
     rclpy.init(args=args)
