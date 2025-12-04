@@ -1,0 +1,10 @@
+0: walls
+1: stores
+2: cleaning_maintenance
+3: security_maintenance
+4: check_in
+5: gates
+6: walkway
+7: path
+8: toilet
+9: lounge
