@@ -5,7 +5,7 @@ from rclpy.node import Node # type: ignore
 
 from path_planner.msg import PathPlannerRequest, PathPlannerResponse
 from obstacle_manager.msg import ObstacleManagerReport
-from robot_manager.msg import RobotManagerRobotPublisher
+from robot_manager.msg import RobotManagerRobot
 
 import heapq
 from math import sqrt
@@ -56,7 +56,7 @@ class PathPlannerServer(Node):
         )
 
         self.robot_sub = self.create_subscription(
-            RobotManagerRobotPublisher,
+            RobotManagerRobot,
             "robot_manager/publish_robot",
             self.handle_robot_request,
             10
