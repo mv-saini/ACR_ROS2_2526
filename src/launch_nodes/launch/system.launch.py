@@ -27,13 +27,6 @@ def generate_launch_description():
             name='path_planner_server',
             output='screen'
         ),
-        
-        Node(
-            package='obstacle_manager',
-            executable='obstacle_manager_server.py',
-            name='obstacle_manager',
-            output='screen'
-        ),
 
         Node(
             package='airport_grid',

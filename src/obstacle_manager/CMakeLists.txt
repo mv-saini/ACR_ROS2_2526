@@ -28,10 +28,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ObstacleManagerObstacleReport.msg"
 )
 
-install(
-  PROGRAMS
-    obstacle_manager_server.py
-  DESTINATION lib/${PROJECT_NAME}
-)
+#install(
+#  PROGRAMS
+#    obstacle_manager_server.py
+#  DESTINATION lib/${PROJECT_NAME}
+#)
 
 ament_package()

@@ -43,7 +43,7 @@ class PathPlannerServer(Node):
         
         self.obstacle_sub = self.create_subscription(
             ObstacleManagerObstacleReport,
-            "obstacle_manager/publish_obstacle",
+            "obstacle_manager/report_obstacle",
             self.handle_obstacle_request,
             10 
         )
@@ -75,7 +75,7 @@ class PathPlannerServer(Node):
         self.robots[msg.robot_id] = msg.robot_type
     
     def handle_obstacle_request(self, msg):
-        self.get_logger().info(f"Received obstacle {msg.status} with id: {msg.id} from Obstacle Manager.")
+        self.get_logger().info(f"Received obstacle {msg.status} with id: {msg.id} from Unity.")
         obstacle = (msg.x, msg.y, msg.type, msg.status, msg.scale_x, msg.scale_y, msg.id)
         if msg.status == "handled":
             if msg.id in self.obstacles:
@@ -96,14 +96,14 @@ class PathPlannerServer(Node):
 
         for n in data["nodes"]:
             nid = int(n["id"])
-            if n["type"] in [1, 2, 3]:
+            if n["type"] in [2, 3, 4, 5, 6, 7, 9]:
                 pos[nid] = (float(n["x"]), float(n["y"]))
                 node_types[nid] = n["type"]
                 neighbors = [int(x) for x in n.get("neighbors", [])]
                 valid_neighbors = []
                 for neighbor in neighbors:
                     neighbor_node = next((node for node in data["nodes"] if int(node["id"]) == neighbor), None)
-                    if neighbor_node and neighbor_node["type"] in [1, 2, 3]:
+                    if neighbor_node and neighbor_node["type"] in [2, 3, 4, 5, 6, 7, 9]:
                         valid_neighbors.append(neighbor)
                 graph[nid] = valid_neighbors
 
@@ -190,9 +190,9 @@ class PathPlannerServer(Node):
                 # Base cost
                 node_type = self.get_node_type(neighbor)
                 extra_cost = 0
-                if node_type == 1:
+                if node_type in [4, 5, 6]:
                     extra_cost = 1.0
-                elif node_type == 3:
+                elif node_type == 9:
                     extra_cost = 10.0
                 
                 # Side cost
