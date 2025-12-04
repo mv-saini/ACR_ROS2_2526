@@ -2,21 +2,21 @@
 import rclpy # type: ignore
 from rclpy.node import Node # type: ignore
 
-from obstacle_manager.msg import ObstacleManagerObstacleReport
+from obstacle_manager.msg import ObstacleManagerReport
 
 class ObstacleManager(Node):
     def __init__(self):
         super().__init__('obstacle_manager')
 
         self.subscriber = self.create_subscription(
-            ObstacleManagerObstacleReport,
+            ObstacleManagerReport,
             "obstacle_manager/report_obstacle",
             self.handle_obstacle_unity_request,
             10
         )
 
         self.publisher = self.create_publisher(
-            ObstacleManagerObstacleReport,
+            ObstacleManagerReport,
             "obstacle_manager/publish_obstacle",
             10
         )

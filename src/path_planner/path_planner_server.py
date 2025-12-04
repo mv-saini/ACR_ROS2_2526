@@ -4,7 +4,7 @@ import rclpy # type: ignore
 from rclpy.node import Node # type: ignore
 
 from path_planner.msg import PathPlannerRequest, PathPlannerResponse
-from obstacle_manager.msg import ObstacleManagerObstacleReport
+from obstacle_manager.msg import ObstacleManagerReport
 from robot_manager.msg import RobotManagerRobotPublisher
 
 import heapq
@@ -42,7 +42,7 @@ class PathPlannerServer(Node):
         )
         
         self.obstacle_sub = self.create_subscription(
-            ObstacleManagerObstacleReport,
+            ObstacleManagerReport,
             "obstacle_manager/report_obstacle",
             self.handle_obstacle_request,
             10 

@@ -5,7 +5,9 @@ from rclpy.node import Node # type: ignore
 import os
 import yaml # type: ignore
 
-from robot_manager.msg import RobotManagerRobotPublisher, RobotManagerRobotSubscriber, RobotManagerTrackerSubscriber
+from robot_manager.msg import RobotManagerRobot, RobotManagerTracker
+
+from std_msgs.msg import String # type: ignore
 
 from ament_index_python.packages import get_package_share_directory # type: ignore
 
@@ -23,20 +25,20 @@ class RobotManager(Node):
         self.get_logger().info(f"Loading YAML file: {yaml_path}")
 
         self.robotSubscriber = self.create_subscription(
-            RobotManagerRobotSubscriber,
+            String,
             "robot_manager/request_robot",
             self.handle_robot_req,
             10
         )
 
         self.robotPublisher = self.create_publisher(
-            RobotManagerRobotPublisher,
+            RobotManagerRobot,
             "robot_manager/publish_robot",
             10
         )
 
         self.trackerSubscriber = self.create_subscription(
-            RobotManagerTrackerSubscriber,
+            RobotManagerTracker,
             "robot_manager/subscribe_tracker",
             self.handle_tracker_req,
             10
@@ -47,8 +49,8 @@ class RobotManager(Node):
         # self.publish_robots()
 
     def handle_robot_req(self, msg):
-        self.get_logger().info(f"Robot manager received message: {msg.state}")
-        if msg.state == "ready":
+        self.get_logger().info(f"Robot manager received message: {msg.data}")
+        if msg.data == "ready":
             self.tracked_robots = {}
             self.publish_robots()
 
@@ -83,7 +85,7 @@ class RobotManager(Node):
             self.robotID += 1
 
     def publish_robots(self):
-        msg = RobotManagerRobotPublisher()
+        msg = RobotManagerRobot()
 
         for robot in self.robots.values():
             (robot_id, robot_type, move_speed, perception_radius, obstacle_distance_threshold,
