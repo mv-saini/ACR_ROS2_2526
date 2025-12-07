@@ -3,7 +3,7 @@ import json
 import rclpy # type: ignore
 from rclpy.node import Node # type: ignore
 
-from path_planner.msg import PathPlannerRequest, PathPlannerResponse
+from path_planner.msg import PathPlannerRequest, PathPlannerResponse, PathPlannerBatteryRequest
 from obstacle_manager.msg import ObstacleManagerReport
 from robot_manager.msg import RobotManagerRobot
 
@@ -32,6 +32,13 @@ class PathPlannerServer(Node):
             PathPlannerRequest,
             "path_planner/request",
             self.handle_request,
+            10
+        )
+
+        self.battery_request = self.create_subscription(
+            PathPlannerBatteryRequest,
+            "path_planner/battery_request",
+            self.handle_battery_request,
             10
         )
 
@@ -256,6 +263,39 @@ class PathPlannerServer(Node):
             req.start_x, req.start_y,
             req.end_x, req.end_y,
         )
+    
+    def handle_battery_request(self, req):
+        handle_request = PathPlannerRequest()
+        handle_request.robot_id = req.robot_id
+        handle_request.start_x = req.start_x
+        handle_request.start_y = req.start_y
+        end_x, end_y = self.get_closest_charging_station(req.start_x, req.start_y, req.robot_id)
+        handle_request.end_x = end_x
+        handle_request.end_y = end_y
+        self.handle_request(handle_request)
+    
+    def get_closest_charging_station(self, x, y, robot_id = None):
+        nTypes = []
+        if robot_id is None:
+            nTypes = [2, 3]
+        else:
+            if robot_id in self.robots:
+                robot_type = self.robots[robot_id]
+                if robot_type == "cleaner":
+                    nTypes = [2]
+                elif robot_type == "security":
+                    nTypes = [3]
+        charging_stations = [nid for nid, ntype in self.node_types.items() if ntype in nTypes]
+        min_dist = float("inf")
+        closest_x, closest_y = None, None
+        for nid in charging_stations:
+            nx, ny = self.pos[nid]
+            dist = sqrt((x - nx) ** 2 + (y - ny) ** 2)
+            if dist < min_dist:
+                min_dist = dist
+                closest_x, closest_y = nx, ny
+        return closest_x, closest_y
+
     
     def _plan_and_publish(self, robot_id, start_node, goal_node, start_x, start_y, end_x, end_y):
         node_path = self.a_star(start_node, goal_node, robot_id)

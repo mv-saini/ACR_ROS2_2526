@@ -27,6 +27,7 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/PathPlannerRequest.msg"
   "msg/PathPlannerResponse.msg"
+  "msg/PathPlannerBatteryRequest.msg"
 )
 
 install(
@@ -35,9 +36,9 @@ install(
   DESTINATION lib/${PROJECT_NAME}
 )
 
-install(
-  DIRECTORY config/
-  DESTINATION share/${PROJECT_NAME}/config
-)
+#install(
+#  DIRECTORY config/
+#  DESTINATION share/${PROJECT_NAME}/config
+#)
 
 ament_package()
