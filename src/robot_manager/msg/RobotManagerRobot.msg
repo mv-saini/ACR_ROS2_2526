@@ -5,8 +5,11 @@ float32 perception_radius
 float32 obstacle_distance_threshold
 float32 start_x
 float32 start_y
+float32 start_z
 float32 end_x
 float32 end_y
+float32 end_z
 float32[] path_x
 float32[] path_y
+float32[] path_z
 bool loop

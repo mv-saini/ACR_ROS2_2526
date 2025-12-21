@@ -1,5 +1,5 @@
 from launch import LaunchDescription
-from launch_ros.actions import Node
+from launch_ros.actions import Node # type: ignore
 
 def generate_launch_description():
     return LaunchDescription([
@@ -9,7 +9,7 @@ def generate_launch_description():
             name='ros_tcp_endpoint',
             parameters=[{
                 'ROS_IP': '0.0.0.0',
-                'ROS_TCP_PORT': 10000
+                'ROS_TCP_PORT': 10001
             }],
             output='screen'
         ),

@@ -1,7 +1,9 @@
 float32 x
 float32 y
+float32 z
 string type
 string status
 float32 scale_x
 float32 scale_y
+float32 scale_z
 string id

@@ -4,14 +4,16 @@ robots:
     perception_radius: 1.5
     obstacle_distance_threshold: 1.0
     start_x: 13.0
-    start_y: 6.0
+    start_y: 1.0
+    start_z: 6.0
     end_x: 2.0
-    end_y: 6.0
+    end_y: 1.0
+    end_z: 6.0
     path: 
-      - [13.0, 6.0]
-      - [2.0, 6.0]
-      - [2.0, 2.0]
-      - [13.0, 2.0]
+      - [13.0, 1.0, 6.0]
+      - [2.0, 1.0, 6.0]
+      - [2.0, 1.0, 2.0]
+      - [13.0, 1.0, 2.0]
     loop: true
 
   - robot_type: "cleaner"
@@ -19,14 +21,16 @@ robots:
     perception_radius: 1.5
     obstacle_distance_threshold: 1.0
     start_x: 2.0
-    start_y: 2.0
+    start_y: 1.0
+    start_z: 2.0
     end_x: 13.0
-    end_y: 2.0
+    end_y: 1.0
+    end_z: 2.0
     path: 
-      - [2.0, 2.0]
-      - [13.0, 2.0]
-      - [13.0, 6.0]
-      - [2.0, 6.0]
+      - [2.0, 1.0, 2.0]
+      - [13.0, 1.0, 2.0]
+      - [13.0, 1.0, 6.0]
+      - [2.0, 1.0, 6.0]
     loop: true
 
   - robot_type: "baggage"
@@ -34,10 +38,12 @@ robots:
     perception_radius: 1.5
     obstacle_distance_threshold: 1.0
     start_x: 1.0
-    start_y: 12.0
+    start_y: 1.0
+    start_z: 12.0
     end_x: 28.0
-    end_y: 12.0
+    end_y: 1.0
+    end_z: 12.0
     path: 
-      - [1.0, 12.0]
-      - [28.0, 12.0]
+      - [1.0, 1.0, 12.0]
+      - [28.0, 1.0, 12.0]
     loop: true

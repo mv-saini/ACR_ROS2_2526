@@ -83,7 +83,7 @@ class PathPlannerServer(Node):
     
     def handle_obstacle_request(self, msg):
         self.get_logger().info(f"Received obstacle {msg.status} with id: {msg.id} from Unity.")
-        obstacle = (msg.x, msg.y, msg.type, msg.status, msg.scale_x, msg.scale_y, msg.id)
+        obstacle = (msg.x, msg.y, msg.z, msg.type, msg.status, msg.scale_x, msg.scale_y, msg.scale_z, msg.id)
         if msg.status == "handled":
             if msg.id in self.obstacles:
                 del self.obstacles[msg.id]
@@ -104,7 +104,7 @@ class PathPlannerServer(Node):
         for n in data["nodes"]:
             nid = int(n["id"])
             if n["type"] in [2, 3, 4, 5, 6, 7, 9]:
-                pos[nid] = (float(n["x"]), float(n["y"]))
+                pos[nid] = (float(n["x"]), float(n["y"]), float(n["z"]))
                 node_types[nid] = n["type"]
                 neighbors = [int(x) for x in n.get("neighbors", [])]
                 valid_neighbors = []
@@ -120,16 +120,16 @@ class PathPlannerServer(Node):
         return graph, pos
 
     def euclidean_distance(self, a, b):
-        (x1, y1) = self.pos[a]
-        (x2, y2) = self.pos[b]
-        return sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+        (x1, y1, z1) = self.pos[a]
+        (x2, y2, z2) = self.pos[b]
+        return sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2 + (z1 - z2) ** 2)
 
-    def closest_node(self, x, y):
+    def closest_node(self, x, y, z):
         best = None
         best_d = float("inf")
 
-        for nid, (nx, ny) in self.pos.items():
-            d = (x - nx) ** 2 + (y - ny) ** 2
+        for nid, (nx, ny, nz) in self.pos.items():
+            d = (x - nx) ** 2 + (y - ny) ** 2 + (z - nz) ** 2
             if d < best_d:
                 best_d = d
                 best = nid
@@ -143,18 +143,19 @@ class PathPlannerServer(Node):
             return True
         return False
     
-    def determine_blocked_nodes(self, robot_id):
+    def determine_blocked_nodes(self):
         blocked_nodes = set()
         active_obstacles = []
+        robot_radius = 0.35
         
         for obs in self.obstacles.values():
-            obs_x, obs_y, obs_type, obs_status, obs_scale_x, obs_scale_y, obs_id = obs
+            obs_x, obs_y, obs_z, obs_type, obs_status, obs_scale_x, obs_scale_y, obs_scale_z, obs_id = obs
             if(obs_status == "unhandled"):
-                """ if(self.skip_obstacle_for_robot(obs_type, robot_id)):
-                    continue """
                 active_obstacles.append(obs)
-                for nid, (nx, ny) in self.pos.items():
-                    if abs(nx - obs_x) <= obs_scale_x and abs(ny - obs_y) <= obs_scale_y:
+                for nid, (nx, ny, nz) in self.pos.items():
+                    if (abs(nx - obs_x) <= (obs_scale_x / 2.0) + robot_radius and 
+                        abs((ny + 1.0) - obs_y) <= (obs_scale_y / 2.0) + robot_radius and 
+                        abs(nz - obs_z) <= (obs_scale_z / 2.0) + robot_radius):
                         blocked_nodes.add(nid)
         
         return blocked_nodes, active_obstacles
@@ -172,8 +173,8 @@ class PathPlannerServer(Node):
                         actual_goal = neighbor
         return actual_goal
 
-    def a_star(self, start, goal, robot_id):        
-        blocked_nodes, active_obstacles = self.determine_blocked_nodes(robot_id)
+    def a_star(self, start, goal):        
+        blocked_nodes, active_obstacles = self.determine_blocked_nodes()
         actual_goal = self.adjust_goal_if_blocked(goal, blocked_nodes, start)
 
         open_set = [(0, start)]
@@ -206,20 +207,20 @@ class PathPlannerServer(Node):
                 side_penalty = 0.0
                 
                 for obs in active_obstacles:
-                    obs_x, obs_y, _, _, obs_sx, obs_sy, _ = obs
+                    obs_x, obs_y, obs_z, _, _, obs_sx, obs_sy, obs_sz, _ = obs
                     
-                    dist_to_obs = sqrt((cur_pos[0] - obs_x)**2 + (cur_pos[1] - obs_y)**2)
+                    dist_to_obs = sqrt((cur_pos[0] - obs_x)**2 + (cur_pos[2] - obs_z)**2)
                     
-                    influence_radius = max(obs_sx, obs_sy) * 2.0 
+                    influence_radius = max(obs_sx, obs_sz) * 2.0 
                     
                     if dist_to_obs < influence_radius:
                         vec_rob_obs_x = obs_x - cur_pos[0]
-                        vec_rob_obs_y = obs_y - cur_pos[1]
+                        vec_rob_obs_z = obs_z - cur_pos[2]
                         
                         vec_move_x = neighbor_pos[0] - cur_pos[0]
-                        vec_move_y = neighbor_pos[1] - cur_pos[1]
+                        vec_move_z = neighbor_pos[2] - cur_pos[2]
                         
-                        cross_prod = (vec_move_x * vec_rob_obs_y) - (vec_move_y * vec_rob_obs_x)
+                        cross_prod = (vec_move_x * vec_rob_obs_z) - (vec_move_z * vec_rob_obs_x)
 
                         if cross_prod < -0.01:
                             side_penalty += 20.0 
@@ -249,19 +250,17 @@ class PathPlannerServer(Node):
     def handle_request(self, req):
         robot_id = req.robot_id
 
-        start = self.closest_node(req.start_x, req.start_y)
-        goal = self.closest_node(req.end_x, req.end_y)
+        start = self.closest_node(req.start_x, req.start_y, req.start_z)
+        goal = self.closest_node(req.end_x, req.end_y, req.end_z)
 
         self.get_logger().info(
-            f"[Robot {robot_id}] request: Unity({req.start_x},{req.start_y}) → "
-            f"Unity({req.end_x},{req.end_y}) | Graph nodes: {start} → {goal}"
+            f"[Robot {robot_id}] request: Unity({req.start_x},{req.start_y},{req.start_z}) → "
+            f"Unity({req.end_x},{req.end_y},{req.end_z}) | Graph nodes: {start} → {goal}"
         )
 
         self.pool.submit(
             self._plan_and_publish,
             robot_id, start, goal,
-            req.start_x, req.start_y,
-            req.end_x, req.end_y,
         )
     
     def handle_battery_request(self, req):
@@ -269,12 +268,16 @@ class PathPlannerServer(Node):
         handle_request.robot_id = req.robot_id
         handle_request.start_x = req.start_x
         handle_request.start_y = req.start_y
-        end_x, end_y = self.get_closest_charging_station(req.start_x, req.start_y, req.robot_id)
+        handle_request.start_z = req.start_z
+        
+        end_x, end_y, end_z = self.get_closest_charging_station(req.start_x, req.start_z, req.robot_id)
+        
         handle_request.end_x = end_x
         handle_request.end_y = end_y
+        handle_request.end_z = end_z
         self.handle_request(handle_request)
     
-    def get_closest_charging_station(self, x, y, robot_id = None):
+    def get_closest_charging_station(self, x, z, robot_id = None):
         nTypes = []
         if robot_id is None:
             nTypes = [2, 3]
@@ -287,18 +290,17 @@ class PathPlannerServer(Node):
                     nTypes = [3]
         charging_stations = [nid for nid, ntype in self.node_types.items() if ntype in nTypes]
         min_dist = float("inf")
-        closest_x, closest_y = None, None
+        closest_x, closest_y, closest_z = None, None, None
         for nid in charging_stations:
-            nx, ny = self.pos[nid]
-            dist = sqrt((x - nx) ** 2 + (y - ny) ** 2)
+            nx, ny, nz = self.pos[nid]
+            dist = sqrt((x - nx) ** 2 + (z - nz) ** 2)
             if dist < min_dist:
                 min_dist = dist
-                closest_x, closest_y = nx, ny
-        return closest_x, closest_y
+                closest_x, closest_y, closest_z = nx, ny, nz
+        return closest_x, closest_y, closest_z
 
-    
-    def _plan_and_publish(self, robot_id, start_node, goal_node, start_x, start_y, end_x, end_y):
-        node_path = self.a_star(start_node, goal_node, robot_id)
+    def _plan_and_publish(self, robot_id, start_node, goal_node):
+        node_path = self.a_star(start_node, goal_node)
 
         res = PathPlannerResponse()
         res.robot_id = robot_id
@@ -307,13 +309,15 @@ class PathPlannerServer(Node):
             res.success = False
             res.path_x = []
             res.path_y = []
+            res.path_z = []
             self.get_logger().warn(f"[Robot {robot_id}] No path found.")
         else:
             res.success = True
             for nid in node_path:
-                (x, y) = self.pos[nid]
+                (x, y, z) = self.pos[nid]
                 res.path_x.append(x)
-                res.path_y.append(y)
+                res.path_y.append(y + 1.0)
+                res.path_z.append(z)
 
         self.response_pub.publish(res)
     

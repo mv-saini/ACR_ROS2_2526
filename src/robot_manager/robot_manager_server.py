@@ -57,7 +57,7 @@ class RobotManager(Node):
     def handle_tracker_req(self, msg):
         self.get_logger().info(f"Robot manager received tracker from: {msg.robot_id}")
         self.tracked_robots[msg.robot_id] = (msg.robot_id, msg.robot_type, msg.move_speed, msg.perception_radius, msg.obstacle_distance_threshold, 
-                                     msg.current_x, msg.current_y, msg.start_x, msg.start_y, msg.end_x, msg.end_y, msg.destinations_x, msg.destinations_y, msg.loop, 
+                                     msg.current_x, msg.current_y, msg.current_z, msg.start_x, msg.start_y, msg.start_z, msg.end_x, msg.end_y, msg.end_z, msg.destinations_x, msg.destinations_y, msg.destinations_z, msg.loop, 
                                      msg.obstacle_detected, msg.performing_task)
         self.get_logger().info(f"Updated robot {msg.robot_id}")
     
@@ -73,15 +73,18 @@ class RobotManager(Node):
             obstacle_distance_threshold = robot["obstacle_distance_threshold"]
             start_x = robot["start_x"]
             start_y = robot["start_y"]
+            start_z = robot["start_z"]
             end_x = robot["end_x"]
             end_y = robot["end_y"]
+            end_z = robot["end_z"]
             path = robot["path"]
             path_x = [point[0] for point in path]
             path_y = [point[1] for point in path]
+            path_z = [point[2] for point in path]
             loop = robot["loop"]
             # self.robots.append((id, robot_type, move_speed, perception_radius, obstacle_distance_threshold, start_x, start_y, end_x, end_y, path_x, path_y, loop))
             self.robots[id] = (id, robot_type, move_speed, perception_radius, obstacle_distance_threshold,
-                               start_x, start_y, end_x, end_y, path_x, path_y, loop)
+                               start_x, start_y, start_z, end_x, end_y, end_z, path_x, path_y, path_z, loop)
             self.robotID += 1
 
     def publish_robots(self):
@@ -89,7 +92,7 @@ class RobotManager(Node):
 
         for robot in self.robots.values():
             (robot_id, robot_type, move_speed, perception_radius, obstacle_distance_threshold,
-             start_x, start_y, end_x, end_y, path_x, path_y, loop) = robot
+             start_x, start_y, start_z, end_x, end_y, end_z, path_x, path_y, path_z, loop) = robot
             msg.robot_id = robot_id
             msg.robot_type = robot_type
             msg.move_speed = move_speed
@@ -97,10 +100,13 @@ class RobotManager(Node):
             msg.obstacle_distance_threshold = obstacle_distance_threshold
             msg.start_x = start_x
             msg.start_y = start_y
+            msg.start_z = start_z
             msg.end_x = end_x
             msg.end_y = end_y
+            msg.end_z = end_z
             msg.path_x = path_x
             msg.path_y = path_y
+            msg.path_z = path_z
             msg.loop = loop
             self.robotPublisher.publish(msg)
             self.get_logger().info(f"Published robot with id: {robot_id}")
