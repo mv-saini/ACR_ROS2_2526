@@ -1,0 +1,1 @@
+source install/setup.bash && ros2 launch launch_nodes system.launch.py 

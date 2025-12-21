@@ -150,8 +150,8 @@ class PathPlannerServer(Node):
         for obs in self.obstacles.values():
             obs_x, obs_y, obs_type, obs_status, obs_scale_x, obs_scale_y, obs_id = obs
             if(obs_status == "unhandled"):
-                if(self.skip_obstacle_for_robot(obs_type, robot_id)):
-                    continue
+                """ if(self.skip_obstacle_for_robot(obs_type, robot_id)):
+                    continue """
                 active_obstacles.append(obs)
                 for nid, (nx, ny) in self.pos.items():
                     if abs(nx - obs_x) <= obs_scale_x and abs(ny - obs_y) <= obs_scale_y:
