@@ -146,6 +146,7 @@ class PathPlannerServer(Node):
     def determine_blocked_nodes(self):
         blocked_nodes = set()
         active_obstacles = []
+        # For now all robots have the same radius. TO CHANGE.
         robot_radius = 0.35
         
         for obs in self.obstacles.values():
@@ -198,7 +199,7 @@ class PathPlannerServer(Node):
                 # Base cost
                 node_type = self.get_node_type(neighbor)
                 extra_cost = 0
-                if node_type in [4, 5, 6]:
+                if node_type in [4, 5]:
                     extra_cost = 1.0
                 elif node_type == 9:
                     extra_cost = 10.0
@@ -270,14 +271,16 @@ class PathPlannerServer(Node):
         handle_request.start_y = req.start_y
         handle_request.start_z = req.start_z
         
-        end_x, end_y, end_z = self.get_closest_charging_station(req.start_x, req.start_z, req.robot_id)
+        end_x, end_y, end_z = self.get_closest_charging_station(req.start_x, req.start_y, req.start_z, req.robot_id)
         
         handle_request.end_x = end_x
         handle_request.end_y = end_y
         handle_request.end_z = end_z
+
+        self.get_logger().info(f"[Robot {req.robot_id}] Battery low. Planning path to closest charging station at Unity({end_x},{end_y},{end_z}).")
         self.handle_request(handle_request)
     
-    def get_closest_charging_station(self, x, z, robot_id = None):
+    def get_closest_charging_station(self, x, y, z, robot_id = None):
         nTypes = []
         if robot_id is None:
             nTypes = [2, 3]
@@ -293,7 +296,7 @@ class PathPlannerServer(Node):
         closest_x, closest_y, closest_z = None, None, None
         for nid in charging_stations:
             nx, ny, nz = self.pos[nid]
-            dist = sqrt((x - nx) ** 2 + (z - nz) ** 2)
+            dist = sqrt((x - nx) ** 2 + (y - ny) ** 2 + (z - nz) ** 2)
             if dist < min_dist:
                 min_dist = dist
                 closest_x, closest_y, closest_z = nx, ny, nz
@@ -318,6 +321,10 @@ class PathPlannerServer(Node):
                 res.path_x.append(x)
                 res.path_y.append(y + 1.0)
                 res.path_z.append(z)
+                #self.get_logger().info(f"[Robot {robot_id}] Node {nid}: ({x}, {y}, {z})")
+        
+        #(x, y, z) = self.pos[node_path[0]]
+        #self.get_logger().info(f"[Robot {robot_id}] Path found with {len(node_path)} nodes.")
 
         self.response_pub.publish(res)
     
