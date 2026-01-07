@@ -7,3 +7,4 @@ float32 scale_x
 float32 scale_y
 float32 scale_z
 string id
+int32 robot_id
