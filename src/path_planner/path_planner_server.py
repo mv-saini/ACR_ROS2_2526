@@ -82,7 +82,7 @@ class PathPlannerServer(Node):
         self.robots[msg.robot_id] = msg.robot_type
     
     def handle_obstacle_request(self, msg):
-        self.get_logger().info(f"Received obstacle {msg.status} with id: {msg.id} from Unity.")
+        self.get_logger().info(f"Received obstacle {msg.type} {msg.status} with id: {msg.id} from Unity.")
         obstacle = (msg.x, msg.y, msg.z, msg.type, msg.status, msg.scale_x, msg.scale_y, msg.scale_z, msg.id)
         if msg.status == "handled":
             if msg.id in self.obstacles:
