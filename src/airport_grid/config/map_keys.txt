@@ -6,5 +6,3 @@
 5: gates
 6: walkway
 7: path
-8: toilet
-9: lounge
