@@ -1,7 +1,7 @@
 import json
 import pandas as pd # type: ignore
 
-csv_filename = 'airport_map.csv'
+csv_filename = 'airport_map_big.csv'
 df = pd.read_csv(csv_filename, header=None, sep=';')
 
 data = df.values

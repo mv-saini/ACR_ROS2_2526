@@ -3,98 +3,135 @@ robots:
     move_speed: 2.0
     perception_radius: 0.5
     obstacle_distance_threshold: 2.0
-    start_x: 7.0
+    start_x: 3.0
     start_y: 1.0
-    start_z: 6.0
-    end_x: 7.0
+    start_z: 11.0
+    end_x: 15.0
     end_y: 1.0
-    end_z: 12.0
+    end_z: 11.0
     path: 
-      - [7.0, 1.0, 6.0]
-      - [7.0, 1.0, 12.0]
-      - [2.0, 1.0, 12.0]
-      - [2.0, 1.0, 6.0]
+      - [3.0, 1.0, 11.0]
+      - [15.0, 1.0, 11.0]
+      - [15.0, 1.0, 18.0]
+      - [3.0, 1.0, 18.0]
     loop: true
 
   - robot_type: "cleaner"
     move_speed: 2.0
     perception_radius: 0.5
     obstacle_distance_threshold: 2.0
-    start_x: 2.0
+    start_x: 3.0
     start_y: 1.0
-    start_z: 2.0
-    end_x: 13.0
+    start_z: 3.0
+    end_x: 21.0
     end_y: 1.0
-    end_z: 2.0
+    end_z: 3.0
     path: 
-      - [2.0, 1.0, 2.0]
-      - [13.0, 1.0, 2.0]
-      - [13.0, 1.0, 6.0]
-      - [2.0, 1.0, 6.0]
+      - [3.0, 1.0, 3.0]
+      - [21.0, 1.0, 3.0]
+      - [21.0, 1.0, 11.0]
+      - [3.0, 1.0, 11.0]
     loop: true
 
   - robot_type: "cleaner"
     move_speed: 2.0
     perception_radius: 0.5
     obstacle_distance_threshold: 2.0
-    start_x: 20.0
+    start_x: 26.0
     start_y: 1.0
-    start_z: 27.0
-    end_x: 20.0
+    start_z: 3.0
+    end_x: 37.0
     end_y: 1.0
-    end_z: 19.0
+    end_z: 3.0
     path: 
-      - [20.0, 1.0, 27.0]
-      - [20.0, 1.0, 19.0]
-      - [27.0, 1.0, 19.0]
-      - [27.0, 1.0, 27.0]
+      - [26.0, 1.0, 3.0]
+      - [37.0, 1.0, 3.0]
+      - [37.0, 1.0, 11.0]
+      - [26.0, 1.0, 11.0]
     loop: true
 
   - robot_type: "cleaner"
     move_speed: 2.0
     perception_radius: 0.5
     obstacle_distance_threshold: 2.0
-    start_x: 2.0
+    start_x: 26.0
     start_y: 1.0
-    start_z: 27.0
-    end_x: 2.0
+    start_z: 33.0
+    end_x: 26.0
     end_y: 1.0
-    end_z: 12.0
+    end_z: 18.0
     path: 
-      - [2.0, 1.0, 27.0]
-      - [2.0, 1.0, 12.0]
-      - [7.0, 1.0, 12.0]
-      - [7.0, 1.0, 27.0]
+      - [26.0, 1.0, 33.0]
+      - [26.0, 1.0, 18.0]
+      - [11.0, 1.0, 18.0]
+      - [11.0, 1.0, 33.0]
     loop: true
 
   - robot_type: "cleaner"
     move_speed: 2.0
     perception_radius: 0.5
     obstacle_distance_threshold: 2.0
-    start_x: 27.0
+    start_x: 36.0
     start_y: 1.0
-    start_z: 7.0
-    end_x: 20.0
+    start_z: 48.0
+    end_x: 36.0
     end_y: 1.0
-    end_z: 7.0
+    end_z: 40.0
     path: 
-      - [27.0, 1.0, 7.0]
-      - [20.0, 1.0, 7.0]
-      - [20.0, 1.0, 2.0]
-      - [27.0, 1.0, 2.0]
+      - [36.0, 1.0, 48.0]
+      - [36.0, 1.0, 40.0]
+      - [31.0, 1.0, 40.0]
+      - [31.0, 1.0, 33.0]
+      - [41.0, 1.0, 33.0]
+      - [41.0, 1.0, 43.0]
+      - [41.0, 1.0, 48.0]
+    loop: true
+
+  - robot_type: "security"
+    move_speed: 2.0
+    perception_radius: 0.5
+    obstacle_distance_threshold: 2.0
+    start_x: 3.0
+    start_y: 1.0
+    start_z: 48.0
+    end_x: 3.0
+    end_y: 1.0
+    end_z: 41.0
+    path: 
+      - [3.0, 1.0, 48.0]
+      - [3.0, 1.0, 41.0]
+      - [16.0, 1.0, 41.0]
+      - [16.0, 1.0, 40.0]
+      - [26.0, 1.0, 40.0]
+      - [26.0, 1.0, 48.0]
     loop: true
   
   - robot_type: "baggage"
     move_speed: 2.0
     perception_radius: 0.5
     obstacle_distance_threshold: 2.0
-    start_x: 28.0
+    start_x: 50.0
     start_y: 1.0
-    start_z: 12.0
-    end_x: 1.0
+    start_z: 33.0
+    end_x: 2.0
     end_y: 1.0
-    end_z: 12.0
+    end_z: 33.0
     path: 
-      - [28.0, 1.0, 12.0]
-      - [1.0, 1.0, 12.0]
+      - [50.0, 1.0, 33.0]
+      - [2.0, 1.0, 33.0]
+    loop: true
+
+  - robot_type: "baggage"
+    move_speed: 2.0
+    perception_radius: 0.5
+    obstacle_distance_threshold: 2.0
+    start_x: 50.0
+    start_y: 1.0
+    start_z: 18.0
+    end_x: 2.0
+    end_y: 1.0
+    end_z: 18.0
+    path: 
+      - [50.0, 1.0, 18.0]
+      - [2.0, 1.0, 18.0]
     loop: true
