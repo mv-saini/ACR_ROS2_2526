@@ -1,5 +1,6 @@
 import json
-import pandas as pd # type: ignore
+
+import pandas as pd  # type: ignore
 
 csv_filename = 'airport_map_big.csv'
 df = pd.read_csv(csv_filename, header=None, sep=';')
@@ -33,7 +34,7 @@ for node in nodes:
     r = rows - 1 - node["z"]
     c = node["x"]
     my_id = node["id"]
-    
+
     for dr, dc in directions:
         nr, nc = r + dr, c + dc
         if (nr, nc) in node_map:

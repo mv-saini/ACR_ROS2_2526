@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
+import heapq
 import json
-import rclpy # type: ignore
-from rclpy.node import Node # type: ignore
+import os
+from concurrent.futures import ThreadPoolExecutor
+from math import sqrt
 
-from path_planner.msg import PathPlannerRequest, PathPlannerResponse, PathPlannerBatteryRequest
+import rclpy  # type: ignore
+from ament_index_python.packages import get_package_share_directory  # type: ignore
+from rclpy.node import Node  # type: ignore
+from std_msgs.msg import String  # type: ignore
+
 from obstacle_manager.msg import ObstacleManagerReport
+from path_planner.msg import PathPlannerRequest, PathPlannerResponse, PathPlannerBatteryRequest
 from robot_manager.msg import RobotManagerRobot
 
-import heapq
-from math import sqrt
-import os
-from ament_index_python.packages import get_package_share_directory # type: ignore
-from concurrent.futures import ThreadPoolExecutor
-
-from std_msgs.msg import String # type: ignore
 
 class PathPlannerServer(Node):
     def __init__(self):
@@ -28,46 +28,20 @@ class PathPlannerServer(Node):
         self.obstacles = dict()
         self.robots = dict()
 
-        self.request_sub = self.create_subscription(
-            PathPlannerRequest,
-            "path_planner/request",
-            self.handle_request,
-            10
-        )
+        self.request_sub = self.create_subscription(PathPlannerRequest, "path_planner/request", self.handle_request, 10)
 
-        self.battery_request = self.create_subscription(
-            PathPlannerBatteryRequest,
-            "path_planner/battery_request",
-            self.handle_battery_request,
-            10
-        )
+        self.battery_request = self.create_subscription(PathPlannerBatteryRequest, "path_planner/battery_request",
+            self.handle_battery_request, 10)
 
-        self.response_pub = self.create_publisher(
-            PathPlannerResponse,
-            "path_planner/response",
-            10
-        )
-        
-        self.obstacle_sub = self.create_subscription(
-            ObstacleManagerReport,
-            "obstacle_manager/report_obstacle",
-            self.handle_obstacle_request,
-            10 
-        )
+        self.response_pub = self.create_publisher(PathPlannerResponse, "path_planner/response", 10)
 
-        self.reset_state = self.create_subscription(
-            String,
-            "path_planner/reset_state",
-            self.handle_reset_state,
-            10
-        )
+        self.obstacle_sub = self.create_subscription(ObstacleManagerReport, "obstacle_manager/report_obstacle",
+            self.handle_obstacle_request, 10)
 
-        self.robot_sub = self.create_subscription(
-            RobotManagerRobot,
-            "robot_manager/publish_robot",
-            self.handle_robot_request,
-            10
-        )
+        self.reset_state = self.create_subscription(String, "path_planner/reset_state", self.handle_reset_state, 10)
+
+        self.robot_sub = self.create_subscription(RobotManagerRobot, "robot_manager/publish_robot",
+            self.handle_robot_request, 10)
 
         self.pool = ThreadPoolExecutor(max_workers=max(2, (os.cpu_count() or 2)))
 
@@ -80,7 +54,7 @@ class PathPlannerServer(Node):
 
     def handle_robot_request(self, msg):
         self.robots[msg.robot_id] = msg.robot_type
-    
+
     def handle_obstacle_request(self, msg):
         self.get_logger().info(f"Received obstacle {msg.type} {msg.status} with id: {msg.id} from Unity.")
         obstacle = (msg.x, msg.y, msg.z, msg.type, msg.status, msg.scale_x, msg.scale_y, msg.scale_z, msg.id)
@@ -138,29 +112,29 @@ class PathPlannerServer(Node):
 
     def skip_obstacle_for_robot(self, obs_type, robot_id):
         robot_type = self.robots.get(robot_id, "")
-        if((obs_type == "DirtObstacle" and robot_type == "cleaner") or
-           (obs_type == "UnattendedObstacle" and robot_type == "security")):
+        if ((obs_type == "DirtObstacle" and robot_type == "cleaner") or (
+                obs_type == "UnattendedObstacle" and robot_type == "security")):
             return True
         return False
-    
+
     def determine_blocked_nodes(self):
         blocked_nodes = set()
         active_obstacles = []
         # For now all robots have the same radius. TO CHANGE.
         robot_radius = 0.35
-        
+
         for obs in self.obstacles.values():
             obs_x, obs_y, obs_z, obs_type, obs_status, obs_scale_x, obs_scale_y, obs_scale_z, obs_id = obs
-            if(obs_status == "unhandled"):
+            if (obs_status == "unhandled"):
                 active_obstacles.append(obs)
                 for nid, (nx, ny, nz) in self.pos.items():
-                    if (abs(nx - obs_x) <= (obs_scale_x / 2.0) + robot_radius and 
-                        abs((ny + 1.0) - obs_y) <= (obs_scale_y / 2.0) + robot_radius and 
-                        abs(nz - obs_z) <= (obs_scale_z / 2.0) + robot_radius):
+                    if (abs(nx - obs_x) <= (obs_scale_x / 2.0) + robot_radius and abs((ny + 1.0) - obs_y) <= (
+                            obs_scale_y / 2.0) + robot_radius and abs(nz - obs_z) <= (
+                            obs_scale_z / 2.0) + robot_radius):
                         blocked_nodes.add(nid)
-        
+
         return blocked_nodes, active_obstacles
-    
+
     def adjust_goal_if_blocked(self, goal, blocked_nodes, start):
         actual_goal = goal
         if goal in blocked_nodes:
@@ -174,7 +148,7 @@ class PathPlannerServer(Node):
                         actual_goal = neighbor
         return actual_goal
 
-    def a_star(self, start, goal):        
+    def a_star(self, start, goal):
         blocked_nodes, active_obstacles = self.determine_blocked_nodes()
         actual_goal = self.adjust_goal_if_blocked(goal, blocked_nodes, start)
 
@@ -203,33 +177,33 @@ class PathPlannerServer(Node):
                     extra_cost = 1.0
                 elif node_type == 9:
                     extra_cost = 10.0
-                
+
                 # Side cost
                 side_penalty = 0.0
-                
+
                 for obs in active_obstacles:
                     obs_x, obs_y, obs_z, _, _, obs_sx, obs_sy, obs_sz, _ = obs
-                    
-                    dist_to_obs = sqrt((cur_pos[0] - obs_x)**2 + (cur_pos[2] - obs_z)**2)
-                    
-                    influence_radius = max(obs_sx, obs_sz) * 2.0 
-                    
+
+                    dist_to_obs = sqrt((cur_pos[0] - obs_x) ** 2 + (cur_pos[2] - obs_z) ** 2)
+
+                    influence_radius = max(obs_sx, obs_sz) * 2.0
+
                     if dist_to_obs < influence_radius:
                         vec_rob_obs_x = obs_x - cur_pos[0]
                         vec_rob_obs_z = obs_z - cur_pos[2]
-                        
+
                         vec_move_x = neighbor_pos[0] - cur_pos[0]
                         vec_move_z = neighbor_pos[2] - cur_pos[2]
-                        
+
                         cross_prod = (vec_move_x * vec_rob_obs_z) - (vec_move_z * vec_rob_obs_x)
 
                         if cross_prod < -0.01:
-                            side_penalty += 20.0 
+                            side_penalty += 20.0
                         elif cross_prod > 0.01:
                             side_penalty += 0.0
 
                 cost = g[cur] + self.euclidean_distance(cur, neighbor) + extra_cost + side_penalty
-                
+
                 if neighbor not in g or cost < g[neighbor]:
                     g[neighbor] = cost
                     f = cost + self.euclidean_distance(neighbor, actual_goal)
@@ -240,7 +214,7 @@ class PathPlannerServer(Node):
 
     def get_node_type(self, node_id):
         return self.node_types.get(node_id, 2)
-    
+
     def reconstruct_path(self, came_from, cur):
         path = [cur]
         while cur in came_from:
@@ -254,33 +228,29 @@ class PathPlannerServer(Node):
         start = self.closest_node(req.start_x, req.start_y, req.start_z)
         goal = self.closest_node(req.end_x, req.end_y, req.end_z)
 
-        self.get_logger().info(
-            f"[Robot {robot_id}] request: Unity({req.start_x},{req.start_y},{req.start_z}) → "
-            f"Unity({req.end_x},{req.end_y},{req.end_z}) | Graph nodes: {start} → {goal}"
-        )
+        self.get_logger().info(f"[Robot {robot_id}] request: Unity({req.start_x},{req.start_y},{req.start_z}) → "
+                               f"Unity({req.end_x},{req.end_y},{req.end_z}) | Graph nodes: {start} → {goal}")
 
-        self.pool.submit(
-            self._plan_and_publish,
-            robot_id, start, goal,
-        )
-    
+        self.pool.submit(self._plan_and_publish, robot_id, start, goal, )
+
     def handle_battery_request(self, req):
         handle_request = PathPlannerRequest()
         handle_request.robot_id = req.robot_id
         handle_request.start_x = req.start_x
         handle_request.start_y = req.start_y
         handle_request.start_z = req.start_z
-        
+
         end_x, end_y, end_z = self.get_closest_charging_station(req.start_x, req.start_y, req.start_z, req.robot_id)
-        
+
         handle_request.end_x = end_x
         handle_request.end_y = end_y
         handle_request.end_z = end_z
 
-        self.get_logger().info(f"[Robot {req.robot_id}] Battery low. Planning path to closest charging station at Unity({end_x},{end_y},{end_z}).")
+        self.get_logger().info(
+            f"[Robot {req.robot_id}] Battery low. Planning path to closest charging station at Unity({end_x},{end_y},{end_z}).")
         self.handle_request(handle_request)
-    
-    def get_closest_charging_station(self, x, y, z, robot_id = None):
+
+    def get_closest_charging_station(self, x, y, z, robot_id=None):
         nTypes = []
         if robot_id is None:
             nTypes = [2, 3]
@@ -320,17 +290,17 @@ class PathPlannerServer(Node):
                 (x, y, z) = self.pos[nid]
                 res.path_x.append(x)
                 res.path_y.append(y + 1.0)
-                res.path_z.append(z)
-                #self.get_logger().info(f"[Robot {robot_id}] Node {nid}: ({x}, {y}, {z})")
-        
-        #(x, y, z) = self.pos[node_path[0]]
-        #self.get_logger().info(f"[Robot {robot_id}] Path found with {len(node_path)} nodes.")
+                res.path_z.append(z)  # self.get_logger().info(f"[Robot {robot_id}] Node {nid}: ({x}, {y}, {z})")
+
+        # (x, y, z) = self.pos[node_path[0]]
+        # self.get_logger().info(f"[Robot {robot_id}] Path found with {len(node_path)} nodes.")
 
         self.response_pub.publish(res)
-    
+
     def destroy_node(self):
         self.pool.shutdown(wait=True)
         super().destroy_node()
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -338,6 +308,7 @@ def main(args=None):
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
+
 
 if __name__ == "__main__":
     main()
